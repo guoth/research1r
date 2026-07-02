@@ -1,3 +1,4 @@
+import time
 from otree.api import *
 
 """
@@ -105,6 +106,71 @@ class Player(BasePlayer):
             [7, '7 - 非常积极'],
         ],
         widget=widgets.RadioSelect
+    )
+    
+    questionnaire_start_time = models.FloatField(initial=0)
+    questionnaire_duration = models.FloatField(initial=0)
+
+    major = models.StringField(label='1. 您的专业为：')
+    major_category = models.IntegerField(
+        label='2. 您的专业类别为：',
+        choices=[[1, '文科'], [2, '理科'], [3, '工科'], [4, '其他']],
+        widget=widgets.RadioSelect,
+    )
+    student_id = models.StringField(label='3. 您的学号为：')
+    gender = models.IntegerField(
+        label='4. 您的性别：',
+        choices=[[1, '男'], [2, '女']],
+        widget=widgets.RadioSelect,
+    )
+    age = models.IntegerField(label='5. 您的年龄为：')
+    education = models.IntegerField(
+        label='6. 您的学历：',
+        choices=[[1, '大学专科'], [2, '大学本科'], [3, '研究生及以上']],
+        widget=widgets.RadioSelect,
+    )
+    work_experience = models.IntegerField(
+        label='7. 您是否有工作经验：包括兼职、寒暑假工与实习',
+        choices=[[1, '是'], [2, '否']],
+        widget=widgets.RadioSelect,
+    )
+
+    is_real_player = models.IntegerField(
+        label='1. 您认为此次游戏中的其他玩家是否为真人?',
+        choices=[[1, '是真人'], [2, '不是真人']],
+        widget=widgets.RadioSelect,
+    )
+    careful_completion_check = models.IntegerField(
+        label='2. 您是否有认真完成实验与问卷，此题选否',
+        choices=[[1, '是'], [2, '否']],
+        widget=widgets.RadioSelect,
+    )
+
+    q3_transfer_round1 = models.IntegerField(
+        label='3. 在第一轮中，您是否可以将部分代币转移给角色E？',
+        choices=[[1, '可以转移给E'], [2, '不能转移给E']],
+        widget=widgets.RadioSelect,
+    )
+    q4_fairness_round1 = models.IntegerField(
+        label='4. 您认为此设定是否公平？',
+        choices=[
+            [1, '1非常不公平'], [2, '2比较不公平'], [3, '3有点不公平'], 
+            [4, '4中立'], [5, '5有点公平'], [6, '6比较公平'], [7, '7非常公平']
+        ],
+        widget=widgets.RadioSelectHorizontal,
+    )
+    q5_transfer_round2 = models.IntegerField(
+        label='5. 在第二轮中，您是否可以将部分代币转移给角色E？',
+        choices=[[1, '可以转移给E'], [2, '不能转移给E']],
+        widget=widgets.RadioSelect,
+    )
+    q6_fairness_round2 = models.IntegerField(
+        label='6. 您认为此设定是否公平？',
+        choices=[
+            [1, '1非常不公平'], [2, '2比较不公平'], [3, '3有点不公平'], 
+            [4, '4中立'], [5, '5有点公平'], [6, '6比较公平'], [7, '7非常公平']
+        ],
+        widget=widgets.RadioSelectHorizontal,
     )
     
     @property
@@ -355,6 +421,51 @@ class EmotionAssessment(Page):
     form_fields = ['emotion_state']
 
 
+class QuestionnaireIntro(Page):
+    timeout_seconds = 3
+
+    @staticmethod
+    def is_displayed(player: Player):
+        return player.round_number == 2
+
+
+class QuestionnairePart1(Page):
+    form_model = 'player'
+    form_fields = [
+        'major',
+        'major_category',
+        'student_id',
+        'gender',
+        'age',
+        'education',
+        'work_experience',
+    ]
+
+    @staticmethod
+    def is_displayed(player: Player):
+        return player.round_number == 2
+
+    @staticmethod
+    def vars_for_template(player: Player):
+        if player.questionnaire_start_time == 0:
+            player.questionnaire_start_time = time.time()
+        return dict()
+
+
+class QuestionnairePart2(Page):
+    form_model = 'player'
+    form_fields = ['is_real_player', 'careful_completion_check', 'q3_transfer_round1', 'q4_fairness_round1', 'q5_transfer_round2', 'q6_fairness_round2']
+
+    @staticmethod
+    def is_displayed(player: Player):
+        return player.round_number == 2
+
+    @staticmethod
+    def before_next_page(player: Player, timeout_happened):
+        if player.questionnaire_start_time > 0:
+            player.questionnaire_duration = time.time() - player.questionnaire_start_time
+
+
 class Results(Page):
     """结果页面：显示感谢和截图提醒"""
 
@@ -385,5 +496,8 @@ page_sequence = [
     EmotionAssessment,
     ResultsWaitPage,
     PlayerEWaitPage,
+    QuestionnaireIntro,
+    QuestionnairePart1,
+    QuestionnairePart2,
     Results,
 ]
