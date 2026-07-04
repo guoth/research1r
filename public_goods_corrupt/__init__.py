@@ -181,34 +181,11 @@ class Player(BasePlayer):
     @property
     def current_logic(self):
         """返回当前轮次应该使用的实验逻辑编号（1或2）
-        如果第一轮使用逻辑1，第二轮使用逻辑2；如果第一轮使用逻辑2，第二轮使用逻辑1"""
-        import random
-        group = self.group
-        # 优先从group.starting_logic读取，如果没有则从session.vars读取
-        group_id = group.id_in_subsession
-        if hasattr(group, 'starting_logic') and group.starting_logic:
-            starting_logic = group.starting_logic
-        elif 'group_starting_logic' in self.session.vars:
-            if group_id in self.session.vars['group_starting_logic']:
-                starting_logic = self.session.vars['group_starting_logic'][group_id]
-            else:
-                # 如果没有默认值，则从(1,2)中随机选择
-                starting_logic = random.choice([1, 2])
-                # 保存到session.vars中
-                self.session.vars['group_starting_logic'][group_id] = starting_logic
-                group.starting_logic = starting_logic
-        else:
-            # 如果没有默认值，则从(1,2)中随机选择
-            starting_logic = random.choice([1, 2])
-            # 保存到session.vars中
-            self.session.vars['group_starting_logic'] = {group_id: starting_logic}
-            group.starting_logic = starting_logic
-        
+        第一轮固定使用逻辑1，第二轮固定使用逻辑2"""
         if self.round_number == 1:
-            return starting_logic
+            return 1
         else:
-            # 第二轮使用另一套逻辑
-            return 2 if starting_logic == 1 else 1
+            return 2
 
 
 # FUNCTIONS
@@ -226,20 +203,8 @@ def creating_session(subsession: Subsession):
         players = group.get_players()
         
         if subsession.round_number == 1:
-            # 第1轮：为每个group随机分配起始实验逻辑（1或2）
-            # 使用group的id_in_subsession作为key，存储到subsession的vars中，以便跨轮次使用
-            group_id = group.id_in_subsession
-            if 'group_starting_logic' not in subsession.session.vars:
-                subsession.session.vars['group_starting_logic'] = {}
-            
-            # 如果该group还没有分配起始逻辑，则随机分配
-            if group_id not in subsession.session.vars['group_starting_logic']:
-                starting_logic = random.choice([1, 2])
-                subsession.session.vars['group_starting_logic'][group_id] = starting_logic
-                group.starting_logic = starting_logic
-            else:
-                # 如果已经分配过，则从session.vars中读取
-                group.starting_logic = subsession.session.vars['group_starting_logic'][group_id]
+            # 第1轮：固定使用逻辑1，设置group.starting_logic为1（保持兼容性）
+            group.starting_logic = 1
             
             # 第1轮：随机打乱并分配角色
             assigned_roles = roles.copy()
@@ -249,11 +214,8 @@ def creating_session(subsession: Subsession):
                 # 缓存玩家角色，供后续轮次继承
                 player.participant.vars['player_role'] = player.player_role
         else:
-            # 第2轮及以后：从session.vars中读取起始逻辑
-            group_id = group.id_in_subsession
-            if 'group_starting_logic' in subsession.session.vars:
-                if group_id in subsession.session.vars['group_starting_logic']:
-                    group.starting_logic = subsession.session.vars['group_starting_logic'][group_id]
+            # 第2轮及以后：固定使用逻辑2，设置group.starting_logic为2（保持兼容性）
+            group.starting_logic = 2
             
             # 第2轮及以后：沿用玩家在第1轮的角色
             for player in players:
